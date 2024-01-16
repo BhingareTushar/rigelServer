@@ -1,18 +1,18 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 
 	"log"
 	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/remiges-aniket/configsvc"
-	"github.com/remiges-aniket/etcd"
-	"github.com/remiges-aniket/rigel"
+	"github.com/remiges-tech/rigel/etcd"
+	"github.com/remiges-tech/rigel"
 	"github.com/remiges-aniket/utils"
 	"github.com/remiges-tech/alya/config"
 	"github.com/remiges-tech/alya/service"
@@ -20,17 +20,18 @@ import (
 	"github.com/remiges-tech/logharbour/logharbour"
 )
 
-const dialTimeout = 5 * time.Second
-
 func main() {
 
 	appConfig, environment := setConfigEnvironment(utils.DevEnv)
-	// Logharbour
+	// Logger setup
+	logFile, err := os.OpenFile("log.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fallbackWriter := logharbour.NewFallbackWriter(logFile, os.Stdout)
 	lctx := logharbour.NewLoggerContext(logharbour.Info)
-	l := logharbour.NewLogger(lctx, "rigel", os.Stdout)
-	l.WithPriority(logharbour.Debug0)
-	// Rigel
-	// error types
+	l := logharbour.NewLogger(lctx, "rigel", fallbackWriter)
+
 	// Open the error types file
 	file, err := os.Open("./errortypes.yaml")
 	if err != nil {
@@ -51,15 +52,32 @@ func main() {
 		fmt.Print("error", err)
 		return
 	}
+	allkeys, err := cli.GetWithPrefix(context.Background(), "/remiges/rigel/")
+	if err != nil {
+		log.Fatalf("etcd interaction failed: %v", err)
+	}
+	fmt.Println("allkeys", allkeys)
 
-	rigel.NewWithStorage(cli)
+	rTree := utils.NewNode("")
+	for k, v := range allkeys {
+
+		rTree.AddPath(k, v)
+	}
+
+	rigelClient := rigel.NewWithStorage(cli)
 
 	// Services
 	// Config Services
-	s := service.NewService(r).WithDependency("client", cli).WithLogHarbour(l).WithDependency("appConfig", appConfig)
+	s := service.NewService(r).
+		WithDependency("client", cli).
+		WithLogHarbour(l).
+		WithDependency("appConfig", appConfig).
+		WithDependency("rTree", rTree).
+		WithDependency("r", rigelClient)
 	s.RegisterRoute(http.MethodGet, "/configget", configsvc.Config_get)
 	s.RegisterRoute(http.MethodGet, "/configlist", configsvc.Config_list)
 	s.RegisterRoute(http.MethodPost, "/configset", configsvc.Config_set)
+	s.RegisterRoute(http.MethodPost, "/configupdate", configsvc.Config_update)
 
 	r.Run(":" + appConfig.AppServerPort)
 	if err != nil {

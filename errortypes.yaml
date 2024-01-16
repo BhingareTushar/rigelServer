@@ -4,3 +4,5 @@
 "database_error": 3
 "request_user_invalid": 4
 "missing": 101
+"unable_to_set": 102
+"not_exist": 103

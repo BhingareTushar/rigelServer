@@ -12,7 +12,6 @@ import (
 	"github.com/remiges-aniket/utils"
 	"github.com/remiges-tech/alya/service"
 	"github.com/remiges-tech/alya/wscutils"
-	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 const ORGANISATION_PREFIX = "/remiges/rigel/"
@@ -127,47 +126,47 @@ func Config_list(c *gin.Context, s *service.Service) {
 	wscutils.SendSuccessResponse(c, wscutils.NewSuccessResponse(response))
 }
 
-// Config_set: handles the POST /userset request
-func Config_set(c *gin.Context, s *service.Service) {
-	lh := s.LogHarbour
-	lh.Log("User_get request received")
-	client := s.Dependencies["client"].(*clientv3.Client)
+// // Config_set: handles the POST /userset request
+// func Config_set(c *gin.Context, s *service.Service) {
+// 	lh := s.LogHarbour
+// 	lh.Log("User_get request received")
+// 	client := s.Dependencies["client"].(*clientv3.Client)
 
-	var request utils.CreateConfigRequest
+// 	var request utils.CreateConfigRequest
 
-	// Unmarshal JSON request into user struct
-	err := wscutils.BindJSON(c, &request)
-	if err != nil {
-		// l.LogActivity("Error Unmarshalling JSON to struct:", logharbour.DebugInfo{Variables: map[string]any{"Error": err.Error()}})
-		return
-	}
+// 	// Unmarshal JSON request into user struct
+// 	err := wscutils.BindJSON(c, &request)
+// 	if err != nil {
+// 		// l.LogActivity("Error Unmarshalling JSON to struct:", logharbour.DebugInfo{Variables: map[string]any{"Error": err.Error()}})
+// 		return
+// 	}
 
-	valError := wscutils.WscValidate(request, getValsForConfigCreateReqError)
-	if len(valError) > 0 {
-		wscutils.SendErrorResponse(c, wscutils.NewResponse(wscutils.ErrorStatus, nil, valError))
-		return
-	}
+// 	valError := wscutils.WscValidate(request, getValsForConfigCreateReqError)
+// 	if len(valError) > 0 {
+// 		wscutils.SendErrorResponse(c, wscutils.NewResponse(wscutils.ErrorStatus, nil, valError))
+// 		return
+// 	}
 
-	// create key for DB using req
-	keyStr := ORGANISATION_PREFIX + *request.App + "/" + *request.Module + "/" + strconv.Itoa(*request.Version) + "/" + *request.Config
+// 	// create key for DB using req
+// 	keyStr := ORGANISATION_PREFIX + *request.App + "/" + *request.Module + "/" + strconv.Itoa(*request.Version) + "/" + *request.Config
 
-	if &request.Description != nil || len(request.Description) != 0 {
-		fmt.Println("INSIDE DESCRIP NILL >>> keyStr:", keyStr)
-		ke, err := client.Put(c, keyStr+"/description", request.Description)
-		fmt.Println("ke:", ke, ">>> err:", err)
-	}
-	keyStr += "/description/" + *request.Name
-	_, err = client.Put(c, keyStr, *request.Value)
+// 	if &request.Description != nil || len(request.Description) != 0 {
+// 		fmt.Println("INSIDE DESCRIP NILL >>> keyStr:", keyStr)
+// 		ke, err := client.Put(c, keyStr+"/description", request.Description)
+// 		fmt.Println("ke:", ke, ">>> err:", err)
+// 	}
+// 	keyStr += "/description/" + *request.Name
+// 	_, err = client.Put(c, keyStr, *request.Value)
 
-	if err != nil {
-		wscutils.SendErrorResponse(c, wscutils.NewResponse(wscutils.ErrorStatus, nil, []wscutils.ErrorMessage{wscutils.BuildErrorMessage(wscutils.ErrcodeMissing, nil, err.Error())}))
-		// lh.Debug0().Log()
-		return
-	}
+// 	if err != nil {
+// 		wscutils.SendErrorResponse(c, wscutils.NewResponse(wscutils.ErrorStatus, nil, []wscutils.ErrorMessage{wscutils.BuildErrorMessage(wscutils.ErrcodeMissing, nil, err.Error())}))
+// 		// lh.Debug0().Log()
+// 		return
+// 	}
 
-	// lh.Log(fmt.Sprintf("User found: %v", map[string]any{"user": "userResp"}))
-	wscutils.SendSuccessResponse(c, wscutils.NewSuccessResponse(map[string]any{"response": "config_set_success"}))
-}
+// 	// lh.Log(fmt.Sprintf("User found: %v", map[string]any{"user": "userResp"}))
+// 	wscutils.SendSuccessResponse(c, wscutils.NewSuccessResponse(map[string]any{"response": "config_set_success"}))
+// }
 
 // bindGetConfigResponse is specifically used in Cinfig_get to bing and set the response
 func bindGetConfigResponse(response *getConfigResponse, queryParams *utils.GetConfigRequestParams, getValue map[string]string) {
